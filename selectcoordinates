@@ -1,0 +1,13 @@
+SELECT
+  *, (
+    3959 * acos (
+      cos ( radians(40.74712843) )
+      * cos( radians( pickup_latitude ) )
+      * cos( radians( pickup_longitude ) - radians( -73.99661094) )
+      + sin ( radians(40.74712843) )
+      * sin( radians( pickup_latitude ) )
+    )
+  ) AS distance
+FROM taxis_taxipickups
+HAVING distance < 0.0621371
+ORDER BY distance;
