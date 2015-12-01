@@ -6,58 +6,181 @@
 {% block additional_css %}
     <style>
         #mapCanvas {
-            width: 800px;
+            width: 100%;
             height: 600px;
             float: left;
-        }
-        #infoPanel {
-            float: left;
-            margin-left: 10px;
         }
         #infoPanel div {
             margin-bottom: 5px;
         }
+        #pickups_distribution{
+            height: 400px;
+        }
+
     </style>
 {% endblock %}
 
 {% block content %}
-    <section class="content">
-    <form action="." method="post">
-        {% csrf_token %}
-        <div class="row">
-            <div class="col-md-4">
-                <div class="box box-primary">
-                <div class="form-group">
-                    <label for="pickup_date">Pick a Date:</label>
-                    <input data-provide="datepicker" class="form-control" id="pickup_date" name="pickup_date">
+
+
+        <section class="content-header">
+            <h1>Pick Ups</h1>
+            <small>Summary Statistics</small>
+        </section>
+        <section class="content">
+            <form action="." method="post">
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="box box-primary">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">Pick Up Date</h3>
+                        </div><!-- /.box-header -->
+                        <!-- form start -->
+
+                            {% csrf_token %}
+                            <div class="box-body">
+                                <div class="form-group">
+                                    <label for="pickup_date" class="col-sm-2 control-label">Date:</label>
+
+                                  <div class="col-sm-10">
+                                    <input data-provide="datepicker" class="form-control" id="pickup_date" name="pickup_date">
+                                  </div>
+                                </div>
+                            </div><!-- /.box-body -->
+
+                            <div class="box-footer">
+                                <button type="submit" class="btn btn-primary pull-right">Get Information</button>
+                            </div>
+                    </div>
+                    <div class="small-box bg-green">
+                        <div class="inner">
+                            {% if number_dropoffs %}
+                                <h3>{{ number_dropoffs }}</h3>
+                            {% else %}
+                                <h3>-</h3>
+                            {% endif %}
+                            <p>Total of Drop Offs</p>
+                        </div>
+                        <div class="icon">
+                            <i class="ion ion-stats-bars"></i>
+                        </div>
+                    </div>
+                    <div class="box box-primary">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">Pick Up Location</h3>
+                        </div><!-- /.box-header -->
+                        <div class="box-body">
+
+                            <strong><i class="fa fa-map-marker margin-r-5"></i>Current Position</strong>
+                            <p class="text-muted" id="info"></p>
+
+                            <hr>
+
+                            <strong><i class="fa fa-map-marker margin-r-5"></i>Approximate Address</strong>
+                            <p class="text-muted" id="address"></p>
+                        </div><!-- /.box-body -->
+                    </div>
+                    <div id="coordinates">
+                        <input type="hidden" id="pick_up_lat" name="pick_up_lat">
+                        <input type="hidden" id="pick_up_lon" name="pick_up_lon">
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary">Get Info</button>
-            </div>
-            </div>
+                <div class="col-md-10">
+                    <div class="row">
+                        <div class="box box-primary">
+                            <div class="box-header with-border">
+                                <h3 class="box-title">Pick Ups Map</h3>
+                                <div class="box-tools pull-right">
+                                    <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                                    <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="box-body" style="display: block;">
+                                <div id="mapCanvas"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% if results_flag %}
+                        <div class="row">
+                            <div class="box box-primary">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">Pick Ups Distribution</h3>
+                                    <div class="box-tools pull-right">
+                                        <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                                        <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                                    </div>
+                                </div>
+                                <div class="box-body" style="display: block;">
+                                    <div id="chart_div">
 
-            <div id="infoPanel" class="col-md-6">
-                <b>Current position:</b>
-                <div id="info"></div>
-                <b>Approximate Address:</b>
-                <div id="address"></div>
-                <div id="coordinates">
-                    <input type="hidden" id="pick_up_lat" name="pick_up_lat">
-                    <input type="hidden" id="pick_up_lon" name="pick_up_lon">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="box box-primary">
+                                    <div class="box-header with-border">
+                                        <h3 class="box-title">Pick Ups Rate Summary</h3>
+                                        <div class="box-tools pull-right">
+                                            <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                                            <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="box-body" style="display: block;">
+                                        <table class="table table-bordered">
+                                            <tbody><tr>
+                                                <th>Statistic</th>
+                                                <th>Amount</th>
+                                            </tr>
+                                            {% for stats_name, stats_value in rate_summary.items %}
+                                                <tr>
+                                                    <td>{{ stats_name }}</td>
+                                                    <td>$ {{ stats_value }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="box box-primary col-md-6">
+
+                                    <div class="box-header with-border">
+                                        <h3 class="box-title">Pick Ups Distance Summary</h3>
+                                        <div class="box-tools pull-right">
+                                            <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                                            <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="box-body" style="display: block;">
+                                        <table class="table table-bordered">
+                                            <tbody><tr>
+                                                <th>Statistic</th>
+                                                <th>Distance (In Miles)</th>
+                                            </tr>
+                                            {% for stats_name, stats_value in distance_summary.items %}
+                                                <tr>
+                                                    <td>{{ stats_name }}</td>
+                                                    <td>{{ stats_value }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
                 </div>
-            </div>
-        </div>
-        <div class="row">
-
-
-            <div id="mapCanvas"></div>
-        </div>
-        <div class="row">
-            <div id="chart_div">
 
             </div>
-        </div>
-    </form>
-    </section>
+
+            </form>
+        </section>
+
 {% endblock %}
 
 {% block additional_js %}
