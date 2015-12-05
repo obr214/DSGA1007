@@ -24,11 +24,11 @@
 
 
         <section class="content-header">
-            <h1>Pick Ups</h1>
+            <h1>Pick Ups Clusters</h1>
             <small>Summary Statistics</small>
         </section>
         <section class="content">
-            <form action="." method="post">
+            <form action="" method="post">
             <div class="row">
                 <div class="col-md-2">
                     <div class="box box-primary">
@@ -100,79 +100,7 @@
                             </div>
                         </div>
                     </div>
-                    {% if results_flag %}
-                        <div class="row">
-                            <div class="box box-primary">
-                                <div class="box-header with-border">
-                                    <h3 class="box-title">Pick Ups Distribution</h3>
-                                    <div class="box-tools pull-right">
-                                        <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
-                                        <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-                                    </div>
-                                </div>
-                                <div class="box-body" style="display: block;">
-                                    <div id="chart_div">
 
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="box box-primary">
-                                    <div class="box-header with-border">
-                                        <h3 class="box-title">Pick Ups Rate Summary</h3>
-                                        <div class="box-tools pull-right">
-                                            <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
-                                            <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-                                        </div>
-                                    </div>
-                                    <div class="box-body" style="display: block;">
-                                        <table class="table table-bordered">
-                                            <tbody><tr>
-                                                <th>Statistic</th>
-                                                <th>Amount</th>
-                                            </tr>
-                                            {% for stats_name, stats_value in rate_summary.items %}
-                                                <tr>
-                                                    <td>{{ stats_name }}</td>
-                                                    <td>$ {{ stats_value }}</td>
-                                                </tr>
-                                            {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="box box-primary col-md-6">
-
-                                    <div class="box-header with-border">
-                                        <h3 class="box-title">Pick Ups Distance Summary</h3>
-                                        <div class="box-tools pull-right">
-                                            <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
-                                            <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-                                        </div>
-                                    </div>
-                                    <div class="box-body" style="display: block;">
-                                        <table class="table table-bordered">
-                                            <tbody><tr>
-                                                <th>Statistic</th>
-                                                <th>Distance (In Miles)</th>
-                                            </tr>
-                                            {% for stats_name, stats_value in distance_summary.items %}
-                                                <tr>
-                                                    <td>{{ stats_name }}</td>
-                                                    <td>{{ stats_value }}</td>
-                                                </tr>
-                                            {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
 
                 </div>
 
@@ -256,9 +184,11 @@
             });
 
             var marker_locations = [
-                {% if drop_offs %}
-                    {% for do in drop_offs %}
-                        [{{ do.dropoff_latitude }}, {{ do.dropoff_longitude }}],
+
+                {% if cluster_list %}
+                    console.log({{ cluster_list }});
+                    {% for cl in cluster_list %}
+                        [{{ cl.0 }}, {{ cl.1 }}],
                     {% endfor %}
                 {% endif %}
             ];
@@ -269,7 +199,6 @@
                     position: new google.maps.LatLng(marker_locations[i][0], marker_locations[i][1]),
                     map: map
                 });
-                markers.push(doff_marker);
 
                 /*
                  google.maps.event.addListener(marker, 'click', (function(marker, i) {
@@ -280,47 +209,10 @@
                  })(marker, i));*/
             }
 
-            var mc = new MarkerClusterer(map, markers);
-
         }
 
         // Onload handler to fire off the app.
         google.maps.event.addDomListener(window, 'load', initialize);
     </script>
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-    <script type="text/javascript">
-        google.load('visualization', '1', {packages: ['corechart', 'bar']});
-        google.setOnLoadCallback(drawBasic);
-
-        google.load('visualization', '1', {packages: ['corechart', 'bar']});
-        google.setOnLoadCallback(drawBasic);
-
-        function drawBasic() {
-
-            var data = new google.visualization.DataTable(
-
-            );
-            data.addColumn('string', 'Time of Day');
-            data.addColumn('number', 'No. of Pick Ups');
-
-            data.addRows([
-                {% for hour, no_pickups in pickup_distribution.items %}
-                    ['{{ hour }}', {{ no_pickups }}],
-                {% endfor %}
-            ]);
-
-            var options = {
-                title: 'Pick Up Distribution Throughout the Day',
-
-            };
-
-            var chart = new google.visualization.ColumnChart(
-                    document.getElementById('chart_div'));
-
-            chart.draw(data, options);
-        }
-
-    </script>
-
 
 {% endblock %}
