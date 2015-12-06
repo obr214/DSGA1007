@@ -12,6 +12,7 @@ import pandas as pd
 
 
 def google_map(request):
+    error_message = None
     drop_offs = None
     results_flag = False
     number_dropoffs = None
@@ -28,7 +29,7 @@ def google_map(request):
         #Updates the lat and long
         current_lat = request.POST.get('pick_up_lat', '40.730610')
         current_long = request.POST.get('pick_up_lon',  '-73.935242')
-        pickup_date = request.POST.get('pickup_date', '2015-01-01')
+        pickup_date = request.POST.get('pickup_date', '01/01/2015')
 
         pickup_date_init, pickup_date_end = format_date(pickup_date)
 
@@ -38,43 +39,45 @@ def google_map(request):
 
         dropoffs_df = pd.DataFrame(drop_offs)
 
-        #hour_grouped = dropoffs_df.set_index('pickup_datetime').groupby(pd.TimeGrouper('1h'))
+        try:
 
-        #print hour_grouped
+            hour_range = pd.date_range('00:00:00', periods=24, freq='H')
 
-        hour_range = pd.date_range('00:00:00', periods=24, freq='H')
+            for hour in hour_range:
+                hour_string = hour.strftime("%H:%M")
+                pickup_distribution[hour_string] = 0
 
-        for hour in hour_range:
-            hour_string = hour.strftime("%H:%M")
-            pickup_distribution[hour_string] = 0
+            dropoffs_df['pickup_datetime'] = pd.to_datetime(dropoffs_df['pickup_datetime'])
+            times = pd.DatetimeIndex(dropoffs_df.pickup_datetime)
 
-        dropoffs_df['pickup_datetime'] = pd.to_datetime(dropoffs_df['pickup_datetime'])
-        times = pd.DatetimeIndex(dropoffs_df.pickup_datetime)
-
-        hour_groups = dropoffs_df.groupby([times.hour]).size()
-        for hg in hour_groups.index:
-            #Leading zeros
-            hour_string = str(hg).zfill(2)+':00'
-            pickup_distribution[hour_string] = int(hour_groups[hg])
+            hour_groups = dropoffs_df.groupby([times.hour]).size()
+            for hg in hour_groups.index:
+                #Leading zeros
+                hour_string = str(hg).zfill(2)+':00'
+                pickup_distribution[hour_string] = int(hour_groups[hg])
 
 
-        #Get the descriptive summary
-        rate_sum_statistics = dropoffs_df['total_amount'].describe()
-        rate_summary['Mean'] = rate_sum_statistics['mean']
-        rate_summary['Std Dev'] = rate_sum_statistics['std']
-        rate_summary['25%'] = rate_sum_statistics['25%']
-        rate_summary['50%'] = rate_sum_statistics['50%']
-        rate_summary['75%'] = rate_sum_statistics['75%']
-        rate_summary['Max'] = rate_sum_statistics['max']
+            #Get the descriptive summary
+            rate_sum_statistics = dropoffs_df['total_amount'].describe()
+            rate_summary['Mean'] = rate_sum_statistics['mean']
+            rate_summary['Std Dev'] = rate_sum_statistics['std']
+            rate_summary['25%'] = rate_sum_statistics['25%']
+            rate_summary['50%'] = rate_sum_statistics['50%']
+            rate_summary['75%'] = rate_sum_statistics['75%']
+            rate_summary['Max'] = rate_sum_statistics['max']
 
-        distance_sum_statistics = dropoffs_df['trip_distance'].describe()
-        distance_summary['Mean'] = distance_sum_statistics['mean']
-        distance_summary['Std Dev'] = distance_sum_statistics['std']
-        distance_summary['25%'] = distance_sum_statistics['25%']
-        distance_summary['50%'] = distance_sum_statistics['50%']
-        distance_summary['75%'] = distance_sum_statistics['75%']
-        distance_summary['Max'] = distance_sum_statistics['max']
+            distance_sum_statistics = dropoffs_df['trip_distance'].describe()
+            distance_summary['Mean'] = distance_sum_statistics['mean']
+            distance_summary['Std Dev'] = distance_sum_statistics['std']
+            distance_summary['25%'] = distance_sum_statistics['25%']
+            distance_summary['50%'] = distance_sum_statistics['50%']
+            distance_summary['75%'] = distance_sum_statistics['75%']
+            distance_summary['Max'] = distance_sum_statistics['max']
 
+        except LookupError:
+            print "Error"
+            results_flag = False
+            error_message = 'There is no data for this day or this location. Please try another another combination'
 
     context = RequestContext(request, {
         'drop_offs': drop_offs,
@@ -85,11 +88,13 @@ def google_map(request):
         'pickup_distribution': pickup_distribution,
         'rate_summary': rate_summary,
         'distance_summary': distance_summary,
+        'error': error_message,
     })
     return render(request, 'taxis/google_map.html', context)
 
 
 def test_coordinates(request):
+    print "Test Coordinates"
     drop_offs = None
     results_flag = False
     number_dropoffs = None
@@ -104,33 +109,13 @@ def test_coordinates(request):
         #Updates the lat and long
         current_lat = request.POST.get('pick_up_lat', '40.730610')
         current_long = request.POST.get('pick_up_lon',  '-73.935242')
-        print current_lat, current_long
-        #pickup_date = request.POST.get('pickup_date', '2015-01-01')
-        pickup_date = '2015-01-01'
-        pickup_date_init = pickup_date + ' 00:00:00'
-        pickup_date_end = pickup_date + ' 23:59:59'
+        pickup_date = request.POST.get('pickup_date', '01/01/2015')
 
-        cursor = connection.cursor()
+        pickup_date_init, pickup_date_end = format_date(pickup_date)
 
-        cursor.execute('SELECT *, '
-                       '(3959 * acos (cos ( radians(%s) )'
-                       '* cos( radians( pickup_latitude ) )'
-                       '* cos( radians( pickup_longitude ) '
-                       '- radians( %s ) ) '
-                       '+ sin ( radians( %s) )'
-                       '* sin( radians( pickup_latitude ) )'
-                       ')'
-                       ') AS distance '
-                       'FROM taxis_taxipickups '
-                       'HAVING distance < 0.0621371 '
-                       'AND pickup_datetime BETWEEN CAST(%s AS DATETIME) AND CAST(%s as DATETIME) '
-                       'ORDER BY pickup_datetime',
-                       [current_lat, current_long, current_lat, pickup_date_init, pickup_date_end]
-                       )
-
-        drop_offs = dictfetchall(cursor)
+        drop_offs = get_dropoffs_df_from_db(current_lat, current_long, pickup_date_init, pickup_date_end)
         number_dropoffs = len(drop_offs)
-        print "Number of dropoffs", number_dropoffs
+        print "Number of dropoffs", len(drop_offs)
 
         dropoffs_df = pd.DataFrame(drop_offs)
 

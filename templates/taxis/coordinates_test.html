@@ -21,14 +21,13 @@
 {% endblock %}
 
 {% block content %}
-
-
         <section class="content-header">
             <h1>Pick Ups Clusters</h1>
             <small>Summary Statistics</small>
         </section>
         <section class="content">
             <form action="" method="post">
+
             <div class="row">
                 <div class="col-md-2">
                     <div class="box box-primary">
@@ -183,10 +182,11 @@
                 geocodePosition(marker.getPosition());
             });
 
+            console.log({{ cluster_list }});
             var marker_locations = [
 
                 {% if cluster_list %}
-                    console.log({{ cluster_list }});
+
                     {% for cl in cluster_list %}
                         [{{ cl.0 }}, {{ cl.1 }}],
                     {% endfor %}

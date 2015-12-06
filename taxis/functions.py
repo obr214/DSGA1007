@@ -2,7 +2,7 @@ import numpy as np
 from decimal import Decimal
 from django.db import connection
 from sklearn.cluster import DBSCAN
-from math import sin, cos, sqrt, atan2, radians
+#from math import sin, cos, sqrt, atan2, radians
 
 
 def format_date(datetime_string):
@@ -48,6 +48,7 @@ def get_dropoffs_df_from_db(current_lat, current_long, pickup_date_init, pickup_
     drop_offs = dictfetchall(cursor)
     return drop_offs
 
+"""
 def get_distance_coordinates(latitude_1, longitude_1, latitude_2, longitude_2):
     r = 6373.0
 
@@ -65,7 +66,7 @@ def get_distance_coordinates(latitude_1, longitude_1, latitude_2, longitude_2):
     distance = r * c
 
     return distance
-
+"""
 
 def get_central_coordinate(latitude_list, longitude_list):
     if len(latitude_list) == len(longitude_list):
@@ -84,8 +85,8 @@ def get_central_coordinate(latitude_list, longitude_list):
             lats = np.asarray(latitude_list)
             longitude = np.asarray(longitude_list)
 
-            lats = lats * Decimal(np.pi)/Decimal(180)
-            longitude = longitude * Decimal(np.pi)/Decimal(180)
+            lats = lats * float(np.pi)/float(180)
+            longitude = longitude * float(np.pi)/float(180)
             print lats
             lat_cosine = np.cos(lats)
             print "After cos"
@@ -105,7 +106,7 @@ def get_central_coordinate(latitude_list, longitude_list):
             centralSquareRoot = np.sqrt(x * x + y * y)
             centralLatitude = np.arctan2(z, centralSquareRoot)
 
-            return centralLatitude * 180 / Decimal(np.pi), centralLongitude * 180 / Decimal(np.pi)
+            return centralLatitude * 180 / np.pi, centralLongitude * 180 / np.pi
 
     else:
         return None, None
@@ -139,12 +140,12 @@ def get_cluster_list(dataframe):
         dataframe.cluster_center_lat[dataframe.cluster==label] = lat_cent
         dataframe.cluster_center_long[dataframe.cluster==label] = long_cent
 
-    dataframe['distance_center'] = dataframe.apply(get_distance_coordinates, axis=1)
+    #dataframe['distance_center'] = dataframe.apply(get_distance_coordinates, axis=1)
 
-    max_distances = dataframe.groupby(['cluster'], sort=False)['distance_center'].max()
+    #max_distances = dataframe.groupby(['cluster'], sort=False)['distance_center'].max()
     cluster_rows = dataframe.groupby(['cluster'], sort=False).first()
 
     cluster_df = cluster_rows[['cluster_center_lat', 'cluster_center_long']]
-    cluster_df['max_distances'] = max_distances
+    #cluster_df['max_distances'] = max_distances
 
     return cluster_df.values.tolist()
