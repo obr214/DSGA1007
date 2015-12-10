@@ -114,6 +114,16 @@
 
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js"></script>
     <script type="text/javascript">
+
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF'.split('');
+            var color = '#';
+            for (var i = 0; i < 6; i++ ) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
         var geocoder = new google.maps.Geocoder();
 
         function geocodePosition(pos) {
@@ -182,23 +192,67 @@
                 geocodePosition(marker.getPosition());
             });
 
-            console.log({{ cluster_list }});
-            var marker_locations = [
+            {% if cluster_list %}
+                {% for cl in cluster_list %}
+                    console.log({{ cl.0 }},{{ cl.1 }});
+                    doff_marker = new google.maps.Marker({
+                        position: new google.maps.LatLng({{ cl.0 }}, {{ cl.1 }}),
+                        map: map
+                    });
 
-                {% if cluster_list %}
+                    var color = getRandomColor();
 
-                    {% for cl in cluster_list %}
-                        [{{ cl.0 }}, {{ cl.1 }}],
+                    var df_circle = new google.maps.Circle({
+                        map: map,
+                        radius: {{ cl.2 }},    // 10 miles in metres
+                        fillColor: color,
+                        strokeWeight: 0
+                    });
+
+                    df_circle.bindTo('center', doff_marker, 'position');
+
+                    /*
+                    google.maps.event.addListener(doff_marker, 'click', (function(marker, i) {
+                     return function() {
+                     infowindow.setContent("Number of Drop Offs in Cluster:"+{{ cl.0 }});
+                     infowindow.open(map, marker);
+                     }
+                     })(doff_marker, i));*/
+
+                {% endfor %}
+            {% endif %}
+
+            {% if clusters %}
+                console.log("Estoy dentro");
+                {% for cluster in clusters %}
+                    {% for coordinates in cluster %}
+                    console.log({{ coordinates.1 }},{{ coordinates.0 }});
+                    pos_marker = new google.maps.Marker({
+                        position: new google.maps.LatLng({{ coordinates.1 }}, {{ coordinates.0 }}),
+                        map: map
+                    });
                     {% endfor %}
-                {% endif %}
-            ];
-            var markers = [];
 
+
+                {% endfor %}
+            {% endif %}
+
+
+            /*
             for (i = 0; i < marker_locations.length; i++) {
                 doff_marker = new google.maps.Marker({
                     position: new google.maps.LatLng(marker_locations[i][0], marker_locations[i][1]),
                     map: map
                 });
+
+                var df_circle = new google.maps.Circle({
+                    map: map,
+                    radius: 100,    // 10 miles in metres
+                    fillColor: '#AA0000',
+                    strokeWeight: 0
+                });
+
+                df_circle.bindTo('center', doff_marker, 'position');
 
                 /*
                  google.maps.event.addListener(marker, 'click', (function(marker, i) {
@@ -206,8 +260,8 @@
                  infowindow.setContent(locations[i][0]);
                  infowindow.open(map, marker);
                  }
-                 })(marker, i));*/
-            }
+                 })(marker, i));
+            }*/
 
         }
 

@@ -1,15 +1,14 @@
 import numpy as np
-from decimal import Decimal
+import pandas as pd
 from django.db import connection
 from sklearn.cluster import DBSCAN
-#from math import sin, cos, sqrt, atan2, radians
 
 
 def format_date(datetime_string):
     try:
         pickup_date_arr = datetime_string.split('/')
-        pickup_date = pickup_date_arr[2]+'-'+pickup_date_arr[0]+'-'+pickup_date_arr[1]
-        #pickup_date = '2015-01-01'
+        pickup_date = pickup_date_arr[2] + '-' + pickup_date_arr[0] + '-' + pickup_date_arr[1]
+        # pickup_date = '2015-01-01'
         pickup_date_init = pickup_date + ' 00:00:00'
         pickup_date_end = pickup_date + ' 23:59:59'
         return pickup_date_init, pickup_date_end
@@ -18,12 +17,12 @@ def format_date(datetime_string):
 
 
 def dictfetchall(cursor):
-    #Return all rows from a cursor as a dict
+    # Return all rows from a cursor as a dict
     columns = [col[0] for col in cursor.description]
     return [
         dict(zip(columns, row))
         for row in cursor.fetchall()
-    ]
+        ]
 
 
 def get_dropoffs_df_from_db(current_lat, current_long, pickup_date_init, pickup_date_end):
@@ -48,65 +47,103 @@ def get_dropoffs_df_from_db(current_lat, current_long, pickup_date_init, pickup_
     drop_offs = dictfetchall(cursor)
     return drop_offs
 
-"""
-def get_distance_coordinates(latitude_1, longitude_1, latitude_2, longitude_2):
-    r = 6373.0
 
-    lat1 = radians(latitude_1)
-    lon1 = radians(longitude_1)
-    lat2 = radians(latitude_2)
-    lon2 = radians(longitude_2)
+
+def get_distance_coordinates(latitude_1, longitude_1, latitude_2, longitude_2):
+    r = 6373000.0
+
+    lat1 = np.radians(latitude_1)
+    lon1 = np.radians(longitude_1)
+    lat2 = np.radians(latitude_2)
+    lon2 = np.radians(longitude_2)
 
     dlon = lon2 - lon1
     dlat = lat2 - lat1
 
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
 
     distance = r * c
 
     return distance
-"""
+
+
+def get_distances(coordinates_list, latitude_ref, longitude_ref):
+    distances = []
+    for coord in coordinates_list:
+        distances.append(get_distance_coordinates(coord[1], coord[0], latitude_ref, longitude_ref))
+    return distances
+
+
+def get_distance_coordinates__(x):
+    "Returns the distance in km"
+
+    latitude_1 = x['dropoff_latitude']
+    longitude_1 = x['dropoff_longitude']
+    latitude_2 = x['cluster_center_lat']
+    longitude_2 = x['cluster_center_long']
+
+    r = 6373.0
+
+    lat1 = np.radians(latitude_1)
+    lon1 = np.radians(longitude_1)
+    lat2 = np.radians(latitude_2)
+    lon2 = np.radians(longitude_2)
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+    distance = r * c
+
+    return distance*1000
+
+
+def getCentroid(points):
+    total_points = points.shape[0]
+    sum_lon = np.sum(points[:, 1])
+    sum_lat = np.sum(points[:, 0])
+    return [sum_lon/total_points, sum_lat/total_points]
 
 def get_central_coordinate(latitude_list, longitude_list):
     if len(latitude_list) == len(longitude_list):
 
         number_of_coordinates = len(longitude_list)
-        #If the dataframe contains just one row, it returns that point.
+        # If the dataframe contains just one row, it returns that point.
         if len(latitude_list.index) == 1:
-            #Returns a tuple
-            return latitude_list.iat[0,0], longitude_list.iat[0,0]
+            # Returns a tuple
+            return latitude_list.iat[0, 0], longitude_list.iat[0, 0]
         else:
             x_value = 0
             y_value = 0
             z_value = 0
 
-            #Creates Numpy Arrays
+            # Creates Numpy Arrays
             lats = np.asarray(latitude_list)
             longitude = np.asarray(longitude_list)
 
-            lats = lats * float(np.pi)/float(180)
-            longitude = longitude * float(np.pi)/float(180)
-            print lats
+            lats = lats * float(np.pi) / float(180)
+            longitude = longitude * float(np.pi) / float(180)
             lat_cosine = np.cos(lats)
-            print "After cos"
             long_cosine = np.cos(longitude)
             long_sin = np.sin(longitude)
             lat_sin = np.sin(lats)
 
-            x = np.sum(lat_cosine*long_cosine)
-            y = np.sum(lat_cosine*long_sin)
+            x = np.sum(lat_cosine * long_cosine)
+            y = np.sum(lat_cosine * long_sin)
             z = np.sum(lat_sin)
 
-            x = x/float(number_of_coordinates)
-            y = y/float(number_of_coordinates)
-            z = z/float(number_of_coordinates)
+            x = x / float(number_of_coordinates)
+            y = y / float(number_of_coordinates)
+            z = z / float(number_of_coordinates)
 
             centralLongitude = np.arctan2(y, x)
             centralSquareRoot = np.sqrt(x * x + y * y)
             centralLatitude = np.arctan2(z, centralSquareRoot)
 
-            return centralLatitude * 180 / np.pi, centralLongitude * 180 / np.pi
+            return [centralLatitude * 180 / np.pi, centralLongitude * 180 / np.pi]
 
     else:
         return None, None
@@ -115,7 +152,7 @@ def get_central_coordinate(latitude_list, longitude_list):
 def get_cluster_list(dataframe):
     coordinates = dataframe.as_matrix(columns=['dropoff_longitude', 'dropoff_latitude'])
 
-    db_scan = DBSCAN(eps=.01, min_samples=1).fit(coordinates)
+    db_scan = DBSCAN(eps=.005, min_samples=1).fit(coordinates)
     labels = db_scan.labels_
 
     labels_set = set(labels)
@@ -127,25 +164,58 @@ def get_cluster_list(dataframe):
     dataframe['cluster_center_long'] = np.nan
 
     for label in labels_set:
-        #Filter the rows per cluster
+        # Filter the rows per cluster
         cluster_df = dataframe.loc[dataframe['cluster'] == label]
 
         lat_list = cluster_df['dropoff_latitude']
         long_list = cluster_df['dropoff_longitude']
 
-        #Gets the center of that set of coordinates
+        # Gets the center of that set of coordinates
         lat_cent, long_cent = get_central_coordinate(lat_list, long_list)
 
-        #Saves the centered lat/long in their respective colum
-        dataframe.cluster_center_lat[dataframe.cluster==label] = lat_cent
-        dataframe.cluster_center_long[dataframe.cluster==label] = long_cent
+        # Saves the centered lat/long in their respective colum
+        dataframe.cluster_center_lat[dataframe.cluster == label] = lat_cent
+        dataframe.cluster_center_long[dataframe.cluster == label] = long_cent
 
-    #dataframe['distance_center'] = dataframe.apply(get_distance_coordinates, axis=1)
+    dataframe['distance_center'] = dataframe.apply(get_distance_coordinates, axis=1)
 
-    #max_distances = dataframe.groupby(['cluster'], sort=False)['distance_center'].max()
+    max_distances = dataframe.groupby(['cluster'], sort=False)['distance_center'].max()
     cluster_rows = dataframe.groupby(['cluster'], sort=False).first()
 
     cluster_df = cluster_rows[['cluster_center_lat', 'cluster_center_long']]
-    #cluster_df['max_distances'] = max_distances
+    cluster_df['max_distances'] = max_distances
 
     return cluster_df.values.tolist()
+
+
+def get_cluster_listthing(dataframe):
+    coordinates = dataframe.as_matrix(columns=['dropoff_longitude', 'dropoff_latitude'])
+
+    db_scan = DBSCAN(eps=.0035, min_samples=1).fit(coordinates)
+    labels = db_scan.labels_
+
+    labels_set = set(labels)
+    num_clusters = len(set(labels))
+    print "Num Clusters:", num_clusters
+
+    clusters = pd.Series([coordinates[labels == i] for i in xrange(num_clusters)])
+
+    clusters_list = []
+    centers = []
+    for i, cluster in clusters.iteritems():
+        print "Len", len(cluster)
+        clusters_list.append(cluster.tolist())
+
+        list_center = getCentroid(cluster)
+
+        distances = get_distances(cluster, list_center[0], list_center[1])
+
+        #print "Distances: ", distances
+        max_distance = np.amax(distances)
+        #print "Max: ", max_distance
+        list_center.append(max_distance)
+        centers.append(list_center)
+
+    return clusters.values.tolist(), centers
+    #return clusters_list, centers
+

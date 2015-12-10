@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.template import RequestContext, loader
 from django.http import HttpResponse
 from taxis.models import TaxiPickUps
-from functions import get_cluster_list, get_dropoffs_df_from_db, format_date
+from functions import get_cluster_list, get_dropoffs_df_from_db, format_date, get_cluster_listthing
 
 import pandas as pd
 
@@ -99,6 +99,7 @@ def test_coordinates(request):
     results_flag = False
     number_dropoffs = None
     cluster_list = None
+    clusters = None
 
     current_lat = '40.730610'
     current_long = '-73.935242'
@@ -119,7 +120,10 @@ def test_coordinates(request):
 
         dropoffs_df = pd.DataFrame(drop_offs)
 
-        cluster_list = get_cluster_list(dropoffs_df)
+        clusters, cluster_list = get_cluster_listthing(dropoffs_df)
+        print clusters
+        print "======="
+        print cluster_list
 
     context = RequestContext(request, {
         'drop_offs': drop_offs,
@@ -127,6 +131,7 @@ def test_coordinates(request):
         'current_long': Decimal(current_long),
         'results_flag': results_flag,
         'number_dropoffs': number_dropoffs,
+        'clusters': clusters,
         'cluster_list': cluster_list,
     })
     return render(request, 'taxis/coordinates_test.html', context)
