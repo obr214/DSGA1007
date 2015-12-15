@@ -30,6 +30,21 @@ class TaxiAnalyzer:
     def __init__(self):
         self.taxi_dataframe = None
 
+    def get_data_csv(self, filename):
+        """
+
+        Function that initializes the instance variable dataframe reading a CSV file, instead of querying the DB
+
+        :param filename: The name of the CSV File
+        :return:
+        """
+        try:
+            url_file = settings.MEDIA_ROOT
+            self.taxi_dataframe = pd.read_csv(url_file+filename, index_col=0)
+            self.taxi_dataframe['pickup_datetime'] = pd.to_datetime(self.taxi_dataframe['pickup_datetime'])
+        except IOError:
+            raise IOError("Cannot Read File")
+
     def get_data(self, date, longitud, latitude):
         """
         Function that connects to the database and makes a query filtering by a pick up location and a date.
@@ -65,6 +80,8 @@ class TaxiAnalyzer:
             self.taxi_dataframe['pickup_datetime'] = pd.to_datetime(self.taxi_dataframe['pickup_datetime'])
         except KeyError:
             raise KeyError("No data for this date or this location. Please select another one")
+        except LookupError as lk_error:
+            raise LookupError(lk_error)
 
     def get_size(self):
         """
@@ -79,8 +96,11 @@ class TaxiAnalyzer:
         Returns a list of the Drop Off coordinates of the instance variable dataframe
         :return: A list of latitudes and longitudes
         """
-        dropoffs = self.taxi_dataframe[['dropoff_latitude', 'dropoff_longitude']]
-        return dropoffs.values.tolist()
+        try:
+            dropoffs = self.taxi_dataframe[['dropoff_latitude', 'dropoff_longitude']]
+            return dropoffs.values.tolist()
+        except LookupError:
+            raise LookupError("Cannot obtain the dropoffs from the dataframe")
 
     def get_top_clusters(self, number_clusters):
         """
@@ -196,14 +216,15 @@ class TaxiAnalyzer:
 
         return distance_summary
 
-    def get_amount_info(self):
-        pass
 
     def create_report(self):
+        """
+        This function creates a PDF file with graph. HOWEVER there is an error that should be caused by some bad library
+        """
+
+        # TODO: Check the PIL library. There is an ERROR about the <Tkinter.PhotoImage
         url_file = settings.MEDIA_ROOT
         file_name = 'yellow_cap_analysis.pdf'
-        print "Inside Create"
-        print url_file
 
         with PdfPages(url_file+file_name) as pdf:
 
@@ -215,12 +236,6 @@ class TaxiAnalyzer:
             plt.title("Pick Ups Distribution Over Time")
             plt.xlabel("Time of the Day")
             plt.ylabel("Number of Pick Ups")
-            pdf.savefig()
-            plt.close()
-
-            x = np.arange(0, 5, 0.1)
-            y = np.sin(x)
-            plt.plot(x, y)
             pdf.savefig()
             plt.close()
 

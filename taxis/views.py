@@ -59,6 +59,9 @@ def pick_ups(request):
         except LookupError as lookup_error_message:
             results_flag = False
             error_message = lookup_error_message
+        except IOError as io_error_message:
+            results_flag = False
+            error_message = io_error_message
 
     #Send all the variables back to the HTML for displaying
     context = RequestContext(request, {

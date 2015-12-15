@@ -19,7 +19,7 @@ def format_date(datetime_string):
         pickup_date_end = pickup_date + ' 23:59:59'
         return pickup_date_init, pickup_date_end
     except LookupError:
-        return None, None
+        raise LookupError("Date has a wrong format")
 
 
 def dictfetchall(cursor):
@@ -29,11 +29,14 @@ def dictfetchall(cursor):
     :param cursor: A queryset
     :return: A dictionary with the data from the queryset
     """
-    columns = [col[0] for col in cursor.description]
-    return [
-        dict(zip(columns, row))
-        for row in cursor.fetchall()
-        ]
+    try:
+        columns = [col[0] for col in cursor.description]
+        return [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+            ]
+    except LookupError:
+        raise LookupError("Cannot convert QuerySet to Dictionary")
 
 
 def get_centroid(points):
@@ -62,3 +65,31 @@ def get_distances(coordinates_list, latitude_ref, longitude_ref):
     for coord in coordinates_list:
         distances.append(get_distance_coordinates(coord[1], coord[0], latitude_ref, longitude_ref))
     return distances
+
+
+def get_distance_coordinates(latitude_1, longitude_1, latitude_2, longitude_2):
+    """
+    Obtains the distance between two points
+
+    :param latitude_1: Point One Latitude
+    :param longitude_1: Point One Longitude
+    :param latitude_2: Point Two Latitude
+    :param longitude_2: Point Two Longitude
+    :return: A distance in meters
+    """
+    r = 6373000.0
+
+    lat1 = np.radians(latitude_1)
+    lon1 = np.radians(longitude_1)
+    lat2 = np.radians(latitude_2)
+    lon2 = np.radians(longitude_2)
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+    distance = r * c
+
+    return distance
