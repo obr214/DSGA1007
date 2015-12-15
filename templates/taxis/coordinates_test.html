@@ -223,7 +223,6 @@
             {% endif %}
 
             {% if clusters %}
-                console.log("Estoy dentro");
                 {% for cluster in clusters %}
                     {% for coordinates in cluster %}
                     console.log({{ coordinates.1 }},{{ coordinates.0 }});

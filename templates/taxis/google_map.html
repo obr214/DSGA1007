@@ -5,15 +5,22 @@
 {% load staticfiles %}
 {% block additional_css %}
     <style>
-        #mapCanvas {
+        #all_points_map {
             width: 100%;
             height: 600px;
             float: left;
         }
+
+        #clusters_map {
+            width: 100%;
+            height: 600px;
+            float: left;
+        }
+
         #infoPanel div {
             margin-bottom: 5px;
         }
-        #pickups_distribution{
+        #chart_div{
             height: 400px;
         }
 
@@ -46,8 +53,6 @@
                         <div class="box-header with-border">
                             <h3 class="box-title">Pick Up Date</h3>
                         </div><!-- /.box-header -->
-                        <!-- form start -->
-
                             {% csrf_token %}
                             <div class="box-body">
                                 <div class="form-group">
@@ -107,11 +112,27 @@
                                 </div>
                             </div>
                             <div class="box-body" style="display: block;">
-                                <div id="mapCanvas"></div>
+                                <div id="all_points_map"></div>
                             </div>
                         </div>
                     </div>
                     {% if results_flag %}
+                        <div class="row">
+                            <div class="box box-primary">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">Drop Offs Top 20 Destinations</h3>
+                                    <div class="box-tools pull-right">
+                                        <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                                        <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                                    </div>
+                                </div>
+                                <div class="box-body" style="display: block;">
+                                    <div id="clusters_map">
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="box box-primary">
                                 <div class="box-header with-border">
@@ -200,6 +221,15 @@
     <script type="text/javascript">
         var geocoder = new google.maps.Geocoder();
 
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF'.split('');
+            var color = '#';
+            for (var i = 0; i < 6; i++ ) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
         function geocodePosition(pos) {
             geocoder.geocode({
                 latLng: pos
@@ -226,13 +256,24 @@
             document.getElementById('address').innerHTML = str;
         }
 
+        var map, clusters_map;
+
         function initialize() {
             var latLng = new google.maps.LatLng({{ current_lat }}, {{ current_long }});
-            var map = new google.maps.Map(document.getElementById('mapCanvas'), {
+
+            var myOptions = {
                 zoom: 12,
                 center: latLng,
                 mapTypeId: google.maps.MapTypeId.ROADMAP
-            });
+            };
+
+            map = new google.maps.Map(document.getElementById("all_points_map"), myOptions);
+
+            {% if results_flag %}
+            clusters_map = new google.maps.Map(document.getElementById("clusters_map"), myOptions);
+            {% endif %}
+
+
             var marker = new google.maps.Marker({
                 position: latLng,
                 title: 'Pick Up Place',
@@ -269,7 +310,7 @@
             var marker_locations = [
                 {% if drop_offs %}
                     {% for do in drop_offs %}
-                        [{{ do.dropoff_latitude }}, {{ do.dropoff_longitude }}],
+                        [{{ do.0 }}, {{ do.1 }}],
                     {% endfor %}
                 {% endif %}
             ];
@@ -293,12 +334,35 @@
 
             var mc = new MarkerClusterer(map, markers);
 
+            //These are the cluster points
+            {% if cluster_list %}
+                {% for cl in cluster_list %}
+                    doff_marker = new google.maps.Marker({
+                        position: new google.maps.LatLng({{ cl.0 }}, {{ cl.1 }}),
+                        map: clusters_map
+                    });
+
+                    var color = getRandomColor();
+
+                    var df_circle = new google.maps.Circle({
+                        map: clusters_map,
+                        radius: {{ cl.2 }},
+                        fillColor: color,
+                        strokeWeight: 0
+                    });
+
+                    df_circle.bindTo('center', doff_marker, 'position');
+
+                {% endfor %}
+            {% endif %}
+
         }
 
         // Onload handler to fire off the app.
         google.maps.event.addDomListener(window, 'load', initialize);
     </script>
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    {% if results_flag %}
     <script type="text/javascript">
         google.load('visualization', '1', {packages: ['corechart', 'bar']});
         google.setOnLoadCallback(drawBasic);
@@ -332,6 +396,6 @@
         }
 
     </script>
-
+    {% endif %}
 
 {% endblock %}

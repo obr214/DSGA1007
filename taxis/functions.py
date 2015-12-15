@@ -25,6 +25,23 @@ def dictfetchall(cursor):
         ]
 
 
+def get_centroid(points):
+    total_points = points.shape[0]
+    sum_lon = np.sum(points[:, 1])
+    sum_lat = np.sum(points[:, 0])
+    return [sum_lon/total_points, sum_lat/total_points]
+
+
+def get_distances(coordinates_list, latitude_ref, longitude_ref):
+    distances = []
+    for coord in coordinates_list:
+        distances.append(get_distance_coordinates(coord[1], coord[0], latitude_ref, longitude_ref))
+    return distances
+
+
+#==================================================================
+
+
 def get_dropoffs_df_from_db(current_lat, current_long, pickup_date_init, pickup_date_end):
     cursor = connection.cursor()
 
@@ -191,14 +208,36 @@ def get_cluster_list(dataframe):
 def get_cluster_listthing(dataframe):
     coordinates = dataframe.as_matrix(columns=['dropoff_longitude', 'dropoff_latitude'])
 
-    db_scan = DBSCAN(eps=.0035, min_samples=1).fit(coordinates)
-    labels = db_scan.labels_
+    clusters = None
+    number_of_rows = len(dataframe.index)
+    cluster_stop_flag = True
+    #Starts with .005
+    current_eps = .005
 
-    labels_set = set(labels)
-    num_clusters = len(set(labels))
-    print "Num Clusters:", num_clusters
+    while cluster_stop_flag:
+        db_scan = DBSCAN(eps=current_eps, min_samples=1).fit(coordinates)
+        labels = db_scan.labels_
 
-    clusters = pd.Series([coordinates[labels == i] for i in xrange(num_clusters)])
+        labels_set = set(labels)
+        num_clusters = len(set(labels))
+        print "Num Clusters:", num_clusters
+
+        clusters = pd.Series([coordinates[labels == i] for i in xrange(num_clusters)])
+
+        sorted_len_clusters = sorted(clusters.values.tolist(), key=len, reverse=True)
+        #print "Ordered Paths"
+        #print sorted_len_clusters
+        #print "*****************************"
+        print "Len 1st Cluster:", len(sorted_len_clusters[0])
+
+        current_eps -= .0005
+        if len(sorted_len_clusters[0]) <= int(number_of_rows*0.15):
+            cluster_stop_flag = False
+
+            top_ten_clusters = sorted_len_clusters[:20]
+
+            clusters = pd.Series(top_ten_clusters)
+            print len(clusters)
 
     clusters_list = []
     centers = []
