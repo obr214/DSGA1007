@@ -1,11 +1,14 @@
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from DSGA1007 import settings
+from taxi_analyzer_exception import TaxiAnalyzerException
 from functions import dictfetchall, format_date, get_centroid, get_distances
 from collections import OrderedDict
 from django.db import connection
 from sklearn.cluster import DBSCAN
-
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 class TaxiAnalyzer:
@@ -34,16 +37,17 @@ class TaxiAnalyzer:
                        'ORDER BY pickup_datetime',
                        [latitude, longitud, latitude, date_init, date_end]
                        )
-
-        self.taxi_dataframe = pd.DataFrame(dictfetchall(cursor))
-        self.taxi_dataframe['pickup_datetime'] = pd.to_datetime(self.taxi_dataframe['pickup_datetime'])
-        return True
+        try:
+            self.taxi_dataframe = pd.DataFrame(dictfetchall(cursor))
+            self.taxi_dataframe['pickup_datetime'] = pd.to_datetime(self.taxi_dataframe['pickup_datetime'])
+        except KeyError:
+            raise KeyError("No data for this date or this location. Please select another one")
 
     def get_size(self):
         return len(self.taxi_dataframe.index)
 
     def get_dropoffs(self):
-        dropoffs = self.taxi_dataframe[['dropoff_latitude','dropoff_longitude']]
+        dropoffs = self.taxi_dataframe[['dropoff_latitude', 'dropoff_longitude']]
         return dropoffs.values.tolist()
 
     def get_top_clusters(self, number_clusters):
@@ -131,4 +135,33 @@ class TaxiAnalyzer:
         distance_summary['Max'] = distance_sum_statistics['max']
 
         return distance_summary
+
+    def get_amount_info(self):
+        pass
+
+    def create_report(self):
+        url_file = settings.MEDIA_ROOT
+        file_name = 'yellow_cap_analysis.pdf'
+        print "Inside Create"
+        print url_file
+
+        with PdfPages(url_file+file_name) as pdf:
+
+            #Get the pick up distribution
+            pickup_dist = self.get_pickup_distribution()
+            x = np.arange(len(pickup_dist))
+            plt.bar(x, pickup_dist.values(), align="center")
+            plt.xticks(x, pickup_dist.keys(), rotation='vertical')
+            plt.title("Pick Ups Distribution Over Time")
+            plt.xlabel("Time of the Day")
+            plt.ylabel("Number of Pick Ups")
+            pdf.savefig()
+            plt.close()
+
+            x = np.arange(0, 5, 0.1)
+            y = np.sin(x)
+            plt.plot(x, y)
+            pdf.savefig()
+            plt.close()
+
 

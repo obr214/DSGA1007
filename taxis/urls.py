@@ -6,4 +6,5 @@ __author__ = 'bulos87'
 urlpatterns = [
     url(r'^$', views.google_map, name='google_map'),
     url(r'^clusters$', views.test_coordinates, name='clusters'),
+    url(r'^get_pdf$', views.get_report_file(), name='get_pdf'),
 ]

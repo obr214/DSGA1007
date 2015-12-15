@@ -4,9 +4,11 @@ from django.db import connection
 from django.shortcuts import render
 from django.template import RequestContext, loader
 from django.http import HttpResponse
+from DSGA1007 import settings
 from taxis.models import TaxiPickUps
 from functions import get_cluster_list, get_dropoffs_df_from_db, format_date, get_cluster_listthing
 from taxi_analyzer import TaxiAnalyzer
+from taxi_analyzer_exception import TaxiAnalyzerException
 
 
 import pandas as pd
@@ -33,15 +35,14 @@ def google_map(request):
         current_lat = request.POST.get('pick_up_lat', '40.730610')
         current_long = request.POST.get('pick_up_lon',  '-73.935242')
         pickup_date = request.POST.get('pickup_date', '01/01/2015')
-        original_date = 'pickup_date'
-
-        taxi_analyzer = TaxiAnalyzer()
-        taxi_analyzer.get_data(pickup_date, current_long, current_lat)
-        drop_offs = taxi_analyzer.get_dropoffs()
-        number_dropoffs = taxi_analyzer.get_size()
-
+        original_date = pickup_date
 
         try:
+            taxi_analyzer = TaxiAnalyzer()
+            taxi_analyzer.get_data(pickup_date, current_long, current_lat)
+            drop_offs = taxi_analyzer.get_dropoffs()
+            number_dropoffs = taxi_analyzer.get_size()
+
             cluster_list = taxi_analyzer.get_top_clusters(20)
 
             pickup_distribution = taxi_analyzer.get_pickup_distribution()
@@ -49,11 +50,16 @@ def google_map(request):
             rate_summary = taxi_analyzer.get_rate_stats()
             distance_summary = taxi_analyzer.get_distance_stats()
 
+            #Creates the Report File
+            taxi_analyzer.create_report()
 
-        except LookupError:
+        except LookupError as lookup_error_message:
             print "Error"
             results_flag = False
-            error_message = 'There is no data for this day or this location. Please try another another combination'
+            error_message = lookup_error_message
+        except TaxiAnalyzerException as t_message:
+            results_flag = False
+            error_message = ''
 
     context = RequestContext(request, {
         'original_date': original_date,
@@ -69,6 +75,13 @@ def google_map(request):
         'error': error_message,
     })
     return render(request, 'taxis/google_map.html', context)
+
+
+def get_report_file(request):
+    if request.method == 'POST':
+        url_file = settings.MEDIA_ROOT
+        file_name = 'yellow_cap_analysis.pdf'
+        print "Im here"
 
 
 def test_coordinates(request):
