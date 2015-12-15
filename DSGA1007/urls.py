@@ -16,11 +16,12 @@ Including another URLconf
 from django.conf.urls import include, url
 from django.contrib import admin
 from DSGA1007.views import home
+from taxis.views import pick_ups
 
 urlpatterns = [
-    url(r'^$', home, name='home'),
-    url(r'^main/', home, name='home'),
+    url(r'^$', pick_ups, name='pick_ups'),
+    url(r'^main/', pick_ups, name='pick_ups'),
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^taxis/', include('taxis.urls')),
+    url(r'^pick_ups/', include('taxis.urls')),
 
 ]
