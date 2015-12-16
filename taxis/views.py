@@ -68,7 +68,7 @@ def pick_ups(request):
             taxi_analyzer.create_report()
 
             #Creates File Link
-            report_filepath = settings.MEDIA_ROOT + 'yellow_cap_analysis.pdf'
+            report_filepath = settings.MEDIA_ROOT + 'yellow_cab_analysis.pdf'
 
         except LookupError as lookup_error_message:
             results_flag = False

@@ -54,7 +54,7 @@ class Test(TestCase):
         """
         url_file = settings.MEDIA_ROOT
         try:
-            os.remove(url_file+'yellow_cap_analysis.pdf')
+            os.remove(url_file+'yellow_cab_analysis.pdf')
         except OSError:
             pass
 
@@ -62,4 +62,4 @@ class Test(TestCase):
         taxi_analyzer.get_data_csv('test_.csv')
         taxi_analyzer.create_report()
 
-        self.assertTrue(os.path.isfile(url_file+'yellow_cap_analysis.pdf'))
+        self.assertTrue(os.path.isfile(url_file+'yellow_cab_analysis.pdf'))
