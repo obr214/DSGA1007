@@ -24,6 +24,14 @@
             height: 400px;
         }
 
+        #amount_pie_chart{
+            height: 300px;
+        }
+
+        #payment_pie_chart{
+            height: 300px;
+        }
+
     </style>
 {% endblock %}
 
@@ -103,7 +111,9 @@
                     </div>
                     {% if results_flag %}
                     <div>
-                        <button type="button" class="btn btn-primary" id="btn_get_report">Get Report</button>
+                        <a class="btn btn-app" href="{% url 'get_pdf' %}" target="_blank">
+                            <i class="fa fa-save"></i> Get Report
+                        </a>
                     </div>
                     {% endif %}
                 </div>
@@ -206,6 +216,43 @@
                                             {% endfor %}
                                             </tbody>
                                         </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="box box-primary col-md-6">
+
+                                    <div class="box-header with-border">
+                                        <h3 class="box-title">Fare Amounts Chart</h3>
+                                        <div class="box-tools pull-right">
+                                            <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                                            <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="box-body" style="display: block;">
+                                        <div id="amount_pie_chart">
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="box box-primary col-md-6">
+
+                                    <div class="box-header with-border">
+                                        <h3 class="box-title">Payment Type Chart</h3>
+                                        <div class="box-tools pull-right">
+                                            <button class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                                            <button class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="box-body" style="display: block;">
+                                        <div id="payment_pie_chart">
+
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -389,11 +436,9 @@
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
     {% if results_flag %}
     <script type="text/javascript">
-        google.load('visualization', '1', {packages: ['corechart', 'bar']});
+        google.load('visualization', '1', {packages: ['corechart']});
         google.setOnLoadCallback(drawBasic);
 
-        google.load('visualization', '1', {packages: ['corechart', 'bar']});
-        google.setOnLoadCallback(drawBasic);
 
         function drawBasic() {
 
@@ -418,30 +463,44 @@
                     document.getElementById('chart_div'));
 
             chart.draw(data, options);
+
+            // Amount Pie Chart
+
+            var fare_amount_data = google.visualization.arrayToDataTable([
+              ['Thing', 'Amount'],
+                {% for key, value in fare_amounts.items %}
+                    ['{{ key }}', {{ value }}],
+                {% endfor %}
+            ]);
+
+            var fare_amounts_options = {
+              is3D: true,
+            };
+
+            var pie_chart = new google.visualization.PieChart(document.getElementById('amount_pie_chart'));
+            pie_chart.draw(fare_amount_data, fare_amounts_options);
+
+            // Payment Type Pie Chart
+
+            var payment_type_data = google.visualization.arrayToDataTable([
+              ['Thing', 'Amount'],
+                {% for key, value in payment_types.items %}
+                    ['{{ key }}', {{ value }}],
+                {% endfor %}
+            ]);
+
+            var payment_type_options = {
+              is3D: true,
+            };
+
+            var payment_chart = new google.visualization.PieChart(document.getElementById('payment_pie_chart'));
+            payment_chart.draw(payment_type_data, payment_type_options);
+
+
         }
 
     </script>
-    <script>
-        $("#btn_get_report").click(function() {
-            console.log("Clic");
-            var data = {
-                "csrfmiddlewaretoken": "{{ csrf_token }}"
-            };
 
-            $.ajax({
-                url: "{% url "get_pdf"%}",
-                type: "post",
-                data: data,
-                success: function(json){
-                    console.log("Success");
-                },
-                error: function(jqXHR, textStatus, errorThrown){
-                    console.log(errorThrown);
-                }
-            });
-        });
-
-    </script>
     {% endif %}
 
 

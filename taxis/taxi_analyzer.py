@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 from DSGA1007 import settings
 from functions import dictfetchall, format_date, get_centroid, get_distances
 from collections import OrderedDict
@@ -180,6 +182,38 @@ class TaxiAnalyzer:
 
         return pickup_distribution
 
+    def get_fare_amounts(self):
+        """
+        Obtains the Sum of all the quantities
+        :return: A dictionary
+        """
+
+        fare_amounts = OrderedDict()
+
+        fare_amounts['Fare Amount'] = self.taxi_dataframe['fare_amount'].sum()
+        fare_amounts['Extra'] = self.taxi_dataframe['extra'].sum()
+        fare_amounts['MTA Tax'] = self.taxi_dataframe['mta_tax'].sum()
+        fare_amounts['Tip Amount'] = self.taxi_dataframe['tip_amount'].sum()
+        fare_amounts['Tolls Amount'] = self.taxi_dataframe['tolls_amount'].sum()
+
+        return fare_amounts
+
+    def get_payment_types_amount(self):
+        """
+        Obtains
+        :return: A dictionary
+        """
+
+        pay_types = OrderedDict()
+
+        pay_groups = self.taxi_dataframe.groupby('payment_type').size()
+        print pay_groups
+
+        pay_types['Credit Card'] = pay_groups[1]
+        pay_types['Cash'] = pay_groups[2]
+
+        return pay_types
+
     def get_rate_stats(self):
         """
         Obtains a summary statistics over the total_amount column
@@ -219,12 +253,11 @@ class TaxiAnalyzer:
 
     def create_report(self):
         """
-        This function creates a PDF file with graph. HOWEVER there is an error that should be caused by some bad library
+        This function creates a PDF file with graphs.
         """
 
-        # TODO: Check the PIL library. There is an ERROR about the <Tkinter.PhotoImage
         url_file = settings.MEDIA_ROOT
-        file_name = 'yellow_cap_analysis.pdf'
+        file_name = 'yellow_cab_analysis.pdf'
 
         with PdfPages(url_file+file_name) as pdf:
 
@@ -238,5 +271,30 @@ class TaxiAnalyzer:
             plt.ylabel("Number of Pick Ups")
             pdf.savefig()
             plt.close()
+
+            #Get the Fare Amount Pie Chart
+            fare_amount = self.get_fare_amounts()
+            labels = np.array(fare_amount.keys())
+            values = np.array(fare_amount.values())
+            total = float(values.sum())
+            values = values/total
+
+            plt.pie(values, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
+            plt.title("Amount Chart")
+            pdf.savefig()
+            plt.close()
+
+            #Get the Payment Type Pie Chart
+            payment_type = self.get_payment_types_amount()
+            labels = np.array(payment_type.keys())
+            values = np.array(payment_type.values())
+            total = float(values.sum())
+            values = values/total
+
+            plt.pie(values, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
+            plt.title("Payment Types Chart")
+            pdf.savefig()
+            plt.close()
+
 
 

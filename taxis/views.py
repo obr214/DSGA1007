@@ -1,10 +1,12 @@
 from decimal import Decimal
+import os
 from django.shortcuts import render
 from django.template import RequestContext
 from django.http import HttpResponse
 from django.utils.encoding import smart_str
 from DSGA1007 import settings
 from taxi_analyzer import TaxiAnalyzer
+from django.views.static import serve
 
 
 def pick_ups(request):
@@ -21,8 +23,11 @@ def pick_ups(request):
     number_dropoffs = None
     cluster_list = None
     pickup_distribution = None
+    fare_amounts = None
+    payment_types = None
     rate_summary = None
     distance_summary = None
+    report_filepath = ''
 
     #Set the initial pair of coordinates
     current_lat = '40.730610'
@@ -49,12 +54,21 @@ def pick_ups(request):
             #Gets the Pick Up distribution through the day
             pickup_distribution = taxi_analyzer.get_pickup_distribution()
 
+            #Gets the Fare Amounts
+            fare_amounts = taxi_analyzer.get_fare_amounts()
+
+            #Gets the Payment Types
+            payment_types = taxi_analyzer.get_payment_types_amount()
+
             #Get the summary statistics
             rate_summary = taxi_analyzer.get_rate_stats()
             distance_summary = taxi_analyzer.get_distance_stats()
 
             #Creates the Report File
             taxi_analyzer.create_report()
+
+            #Creates File Link
+            report_filepath = settings.MEDIA_ROOT + 'yellow_cap_analysis.pdf'
 
         except LookupError as lookup_error_message:
             results_flag = False
@@ -73,21 +87,31 @@ def pick_ups(request):
         'number_dropoffs': number_dropoffs,
         'cluster_list': cluster_list,
         'pickup_distribution': pickup_distribution,
+        'fare_amounts': fare_amounts,
+        'payment_types': payment_types,
         'rate_summary': rate_summary,
         'distance_summary': distance_summary,
         'error': error_message,
+        'report_filepath': report_filepath
+
     })
     return render(request, 'taxis/pick_ups.html', context)
 
 
 def get_report_file(request):
-    if request.method == 'POST':
+    """
+    This function prepares the file to be downloaded
+    :param request:
+    :return:
+    """
+    try:
         url_file = settings.MEDIA_ROOT
-        file_name = 'yellow_cap_analysis.pdf'
-        print "Im here"
-        response = HttpResponse(mimetype='application/force-download')
-        response['Content-Disposition'] = 'attachment; filename=%s' % smart_str(file_name)
-        response['X-Sendfile'] = smart_str(url_file)
-        print response
+        file_name = 'yellow_cab_analysis.pdf'
 
-        return response
+        filepath = url_file+file_name
+
+        return serve(request, os.path.basename(filepath), os.path.dirname(filepath))
+    except IOError:
+        raise IOError("Report File Could Not be Located")
+
+
